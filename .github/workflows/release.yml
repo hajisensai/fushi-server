@@ -1,0 +1,56 @@
+# fushi_server 发布入口。本仓只有文档与这条薄 workflow，源码在 monorepo
+# https://github.com/hajisensai/hibiki（packages/fushi_server + packages/fushi_engine 等）。
+#
+# 真正的构建/冒烟/发布逻辑是 hibiki 的可复用 workflow
+# `.github/workflows/release-server.yml`（workflow_call）。可复用 workflow 在**调用方**
+# 的上下文里跑：GITHUB_TOKEN 是本仓的，所以 Release 落在本仓；源码 checkout 由那边
+# 显式钉 `repository: hajisensai/hibiki`（公开仓，不需要任何 token / secret）。
+#
+# 通道：beta = prerelease（tag v<version>-beta.<seq>）；formal = 正式版 + Latest
+# （tag v<version>）。version 取 hibiki 的 packages/fushi_server/pubspec.yaml，seq 是
+# hibiki 的发布序号（与 app 同一条单调序列）。
+#
+# 用法：
+#   gh workflow run release.yml -R hajisensai/fushi-server -f channel=beta -f source_ref=develop
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel (beta = prerelease; formal = non-prerelease + Latest)
+        type: choice
+        required: true
+        default: beta
+        options:
+          - beta
+          - formal
+      source_ref:
+        description: hajisensai/hibiki ref to build from (branch / tag / sha)
+        type: string
+        required: true
+        default: develop
+      tag_name:
+        description: Optional tag override (default v<version>-beta.<seq> / v<version>)
+        type: string
+        required: false
+        default: ''
+      release_name:
+        description: Optional release name override
+        type: string
+        required: false
+        default: ''
+
+jobs:
+  release:
+    # 可复用 workflow 的 ref 与 source_ref 默认值同为 develop：workflow 定义与被构建的
+    # 源码来自同一条分支。要按某个 tag 发正式版时，source_ref 传那个 tag 即可（workflow
+    # 定义仍取 develop 最新——它只描述「怎么构建」，不含产品代码）。
+    uses: hajisensai/hibiki/.github/workflows/release-server.yml@develop
+    permissions:
+      contents: write
+    with:
+      channel: ${{ inputs.channel }}
+      source_ref: ${{ inputs.source_ref }}
+      tag_name: ${{ inputs.tag_name }}
+      release_name: ${{ inputs.release_name }}
