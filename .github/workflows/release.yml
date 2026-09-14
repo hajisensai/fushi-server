@@ -46,7 +46,7 @@ jobs:
     # 可复用 workflow 的 ref 与 source_ref 默认值同为 develop：workflow 定义与被构建的
     # 源码来自同一条分支。要按某个 tag 发正式版时，source_ref 传那个 tag 即可（workflow
     # 定义仍取 develop 最新——它只描述「怎么构建」，不含产品代码）。
-    uses: hajisensai/Fushi/.github/workflows/release-server.yml@ci/fushi-server-release-repo
+    uses: hajisensai/Fushi/.github/workflows/release-server.yml@develop
     permissions:
       contents: write
     with:
