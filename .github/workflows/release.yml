@@ -1,10 +1,10 @@
 # fushi_server 发布入口。本仓只有文档与这条薄 workflow，源码在 monorepo
-# https://github.com/hajisensai/hibiki（packages/fushi_server + packages/fushi_engine 等）。
+# https://github.com/hajisensai/Fushi（packages/fushi_server + packages/fushi_engine 等）。
 #
 # 真正的构建/冒烟/发布逻辑是 hibiki 的可复用 workflow
 # `.github/workflows/release-server.yml`（workflow_call）。可复用 workflow 在**调用方**
 # 的上下文里跑：GITHUB_TOKEN 是本仓的，所以 Release 落在本仓；源码 checkout 由那边
-# 显式钉 `repository: hajisensai/hibiki`（公开仓，不需要任何 token / secret）。
+# 显式钉 `repository: hajisensai/Fushi`（公开仓，不需要任何 token / secret）。
 #
 # 通道：beta = prerelease（tag v<version>-beta.<seq>）；formal = 正式版 + Latest
 # （tag v<version>）。version 取 hibiki 的 packages/fushi_server/pubspec.yaml，seq 是
@@ -26,7 +26,7 @@ on:
           - beta
           - formal
       source_ref:
-        description: hajisensai/hibiki ref to build from (branch / tag / sha)
+        description: hajisensai/Fushi ref to build from (branch / tag / sha)
         type: string
         required: true
         default: develop
@@ -46,7 +46,7 @@ jobs:
     # 可复用 workflow 的 ref 与 source_ref 默认值同为 develop：workflow 定义与被构建的
     # 源码来自同一条分支。要按某个 tag 发正式版时，source_ref 传那个 tag 即可（workflow
     # 定义仍取 develop 最新——它只描述「怎么构建」，不含产品代码）。
-    uses: hajisensai/hibiki/.github/workflows/release-server.yml@develop
+    uses: hajisensai/Fushi/.github/workflows/release-server.yml@develop
     permissions:
       contents: write
     with:

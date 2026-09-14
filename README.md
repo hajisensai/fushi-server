@@ -1,8 +1,8 @@
 # fushi-server — Fushi 无头服务端发布仓
 
-这里是 [Fushi / Hibiki](https://github.com/hajisensai/hibiki) 无头服务端 `fushi_server` 的
+这里是 [Fushi / Hibiki](https://github.com/hajisensai/Fushi) 无头服务端 `fushi_server` 的
 **发布仓**：只放 Release 包和这份说明。源码在 monorepo
-[`packages/fushi_server`](https://github.com/hajisensai/hibiki/tree/develop/packages/fushi_server)
+[`packages/fushi_server`](https://github.com/hajisensai/Fushi/tree/develop/packages/fushi_server)
 （与桌面 Fushi 共用同一份互联 host 引擎 `packages/fushi_engine`），issue 也请开到那边。
 
 `fushi_server` 是一个无 GUI 的 CLI 进程，装在 NAS / 家用服务器 / VPS 上，手机和桌面 Fushi
@@ -47,13 +47,13 @@ bin/fushi_server serve --scan        # 起服务 + 首次扫描
 输入 `<host>:38765`，按服务端显示的 6 位 PIN 完成配对。
 
 配置项、systemd 单元、CLI 子命令、admin API、分块上传协议、CUDA 加速——见包内 `README.md`
-（与源码仓的 [`packages/fushi_server/README.md`](https://github.com/hajisensai/hibiki/blob/develop/packages/fushi_server/README.md) 同一份）。
+（与源码仓的 [`packages/fushi_server/README.md`](https://github.com/hajisensai/Fushi/blob/develop/packages/fushi_server/README.md) 同一份）。
 
 ## 这个仓怎么发包
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) 是一条薄 `workflow_dispatch`
 入口，它调用 hibiki 的可复用 workflow
-[`release-server.yml`](https://github.com/hajisensai/hibiki/blob/develop/.github/workflows/release-server.yml)
+[`release-server.yml`](https://github.com/hajisensai/Fushi/blob/develop/.github/workflows/release-server.yml)
 （`workflow_call`）：在 Linux（ubuntu-22.04）和 Windows 上各构建一份、真进程冒烟（起
 `serve`、断言内置 torrent 引擎与 onnxruntime 都真被加载）、然后用本仓的 `GITHUB_TOKEN`
 发 Release。零 PAT、零 secret，源码只在 monorepo 一份。
