@@ -1,37 +1,46 @@
 # fushi_server 发布入口。本仓只有文档与这条薄 workflow，源码在 monorepo
 # https://github.com/hajisensai/Fushi（packages/fushi_server + packages/fushi_engine 等）。
 #
-# 真正的构建/冒烟/发布逻辑是 hibiki 的可复用 workflow
+# 真正的构建/冒烟/发布/推镜像逻辑是 hibiki 的可复用 workflow
 # `.github/workflows/release-server.yml`（workflow_call）。可复用 workflow 在**调用方**
-# 的上下文里跑：GITHUB_TOKEN 是本仓的，所以 Release 落在本仓；源码 checkout 由那边
-# 显式钉 `repository: hajisensai/Fushi`（公开仓，不需要任何 token / secret）。
+# 的上下文里跑：GITHUB_TOKEN 是本仓的，所以 Release 落在本仓、镜像推到
+# ghcr.io/hajisensai/fushi-server；源码 checkout 由那边显式钉 `repository: hajisensai/Fushi`
+# （公开仓，不需要任何 token / secret）。
 #
-# 通道：beta = prerelease（tag v<version>-beta.<seq>）；formal = 正式版 + Latest
-# （tag v<version>）。version 取 hibiki 的 packages/fushi_server/pubspec.yaml，seq 是
-# hibiki 的发布序号（与 app 同一条单调序列）。
+# 通道与版本号和 app 一致：formal = 正式版 + Latest（tag v<version>）；beta = prerelease
+# （tag v<version>-beta.<seq>）；debug = 滚动 release `debug-rolling`。version 取 hibiki 的
+# fushi/pubspec.yaml，seq 是 hibiki 的发布序号（与 app 同一条单调序列）。
 #
-# 用法：
+# 自动发布：跨仓事件要 PAT，所以本仓每 30 分钟以 channel=auto 轮询一次，由
+# hibiki 的 tool/server_release_plan.py 挑「app 正式版 → app 最新 beta → develop 新提交」里
+# 本仓还没发的一个目标。
+#
+# 手动：
 #   gh workflow run release.yml -R hajisensai/fushi-server -f channel=beta -f source_ref=develop
 name: release
 
 on:
+  schedule:
+    - cron: '17,47 * * * *'
   workflow_dispatch:
     inputs:
       channel:
-        description: Release channel (beta = prerelease; formal = non-prerelease + Latest)
+        description: Release channel (auto = next unreleased app channel; debug = rolling debug-rolling; beta = prerelease; formal = non-prerelease + Latest)
         type: choice
         required: true
-        default: beta
+        default: auto
         options:
+          - auto
+          - debug
           - beta
           - formal
       source_ref:
-        description: hajisensai/Fushi ref to build from (branch / tag / sha)
+        description: hajisensai/Fushi ref to build from (branch / tag / sha; ignored for auto)
         type: string
         required: true
         default: develop
       tag_name:
-        description: Optional tag override (default v<version>-beta.<seq> / v<version>)
+        description: Optional tag override (default v<version>-beta.<seq> / v<version>; ignored for auto and debug)
         type: string
         required: false
         default: ''
@@ -41,6 +50,12 @@ on:
         required: false
         default: ''
 
+# 自动轮询一次只排一条：上一轮还在构建时，新一轮排队等它（plan 才看得到它刚发的 release），
+# 多出来的排队轮次被后来者顶掉；手动 dispatch 各自独立。
+concurrency:
+  group: release-${{ github.event_name == 'schedule' && 'auto' || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   release:
     # 可复用 workflow 的 ref 与 source_ref 默认值同为 develop：workflow 定义与被构建的
@@ -49,8 +64,11 @@ jobs:
     uses: hajisensai/Fushi/.github/workflows/release-server.yml@develop
     permissions:
       contents: write
+      packages: write
+      # plan 读最近失败的 run（同一目标连续失败就跳过），并给定时 workflow 续期。
+      actions: write
     with:
-      channel: ${{ inputs.channel }}
-      source_ref: ${{ inputs.source_ref }}
+      channel: ${{ inputs.channel || 'auto' }}
+      source_ref: ${{ inputs.source_ref || 'develop' }}
       tag_name: ${{ inputs.tag_name }}
       release_name: ${{ inputs.release_name }}
