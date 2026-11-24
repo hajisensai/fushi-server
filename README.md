@@ -26,11 +26,31 @@
 | `fushi_server-<version>-<seq>-linux-x64.tar.gz` | Linux x86-64，glibc ≥ 2.35（Debian 12 / Ubuntu 22.04 及以后、主流 NAS） |
 | `fushi_server-<version>-<seq>-windows-x64.zip` | Windows x86-64 |
 
-- `v<version>-beta.<seq>`（prerelease）= 测试版；`v<version>` = 正式版（Latest）。
+- 通道与版本号和 Fushi app 一致：`v<version>` = 正式版（Latest）；`v<version>-beta.<seq>`（prerelease）=
+  测试版；`debug-rolling`（prerelease）= 调试版，跟着 develop 滚动更新、只保留最新一份。
 - 包里已含 sqlite3、内置 torrent 引擎（Linux 静态链 libtorrent，零运行库依赖）、
   onnxruntime 1.22.0 CPU 版。目标机**不需要**装 libtorrent / openssl。
 - 运行期只需 `ffmpeg` / `ffprobe`（视频封面抽帧、ASR 音轨解码、下载后转封装）；不在 PATH
   时在配置里写 `ffmpeg:` / `ffprobe:` 路径。
+
+## Docker
+
+每次发版同时推镜像到 `ghcr.io/hajisensai/fushi-server`（linux/amd64）：
+
+| 镜像 tag | 通道 |
+|---|---|
+| `latest`、`<x.y.z>`、`<x.y>`、`<x>` | 正式版 |
+| `beta`、`<x.y.z>-beta.<seq>` | 测试版 |
+| `debug`、`debug-<seq>` | 调试版 |
+
+```bash
+docker run -d --name fushi-server -v fushi-config:/config -v /path/to/media:/media \
+  -p 38765:38765 -p 38780:38780 -p 6881:6881 -p 6881:6881/udp \
+  ghcr.io/hajisensai/fushi-server:latest
+```
+
+Compose、PUID/PGID、NAS 模板等见源码仓的
+[`packages/fushi_server/docker/README.md`](https://github.com/hajisensai/Fushi/blob/develop/packages/fushi_server/docker/README.md)。
 
 ## 快速开始
 
@@ -51,20 +71,23 @@ bin/fushi_server serve --scan        # 起服务 + 首次扫描
 
 ## 这个仓怎么发包
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) 是一条薄 `workflow_dispatch`
-入口，它调用 hibiki 的可复用 workflow
+[`.github/workflows/release.yml`](.github/workflows/release.yml) 是一条薄入口（每 30 分钟定时轮询 +
+`workflow_dispatch`），它调用 hibiki 的可复用 workflow
 [`release-server.yml`](https://github.com/hajisensai/Fushi/blob/develop/.github/workflows/release-server.yml)
 （`workflow_call`）：在 Linux（ubuntu-22.04）和 Windows 上各构建一份、真进程冒烟（起
 `serve`、断言内置 torrent 引擎与 onnxruntime 都真被加载）、然后用本仓的 `GITHUB_TOKEN`
-发 Release。零 PAT、零 secret，源码只在 monorepo 一份。
+发 Release，再用同一份 Linux 包打镜像、冒烟后推到 GHCR。零 PAT、零 secret，源码只在 monorepo 一份。
+
+定时轮询（`channel=auto`）按「app 正式版 → app 最新 beta → develop 新提交」挑一个本仓还没发的目标；
+同一目标连续失败 2 次后跳过并告警，修好后手动 dispatch。
 
 ```bash
 gh workflow run release.yml -R hajisensai/fushi-server -f channel=beta   -f source_ref=develop
 gh workflow run release.yml -R hajisensai/fushi-server -f channel=formal -f source_ref=develop
 ```
 
-版本号取 hibiki 的 `packages/fushi_server/pubspec.yaml`，与 app 版本独立；`<seq>` 是 hibiki
-的发布序号（与 app 同一条单调序列）。
+版本号取 hibiki 的 `fushi/pubspec.yaml`，与 app 同号（2026-11 之前的包是独立版本 0.1.0）；`<seq>` 是
+hibiki 的发布序号（与 app 同一条单调序列，远程自更新只比它）。
 
 ## 许可
 
